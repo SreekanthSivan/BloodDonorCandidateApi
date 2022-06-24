@@ -39,4 +39,5 @@ steps:
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
-    publishLocation: FilePath
+    publishLocation: 'FilePath'
+    TargetPath: 'donorapi'
