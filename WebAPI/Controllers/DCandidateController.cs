@@ -27,7 +27,16 @@ namespace WebAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DCandidate>>> GetDCandidates()
         {
-            return await _context.DCandidates.ToListAsync();
+            IList<DCandidate> result = new List<DCandidate>();
+            try
+            {
+                result = await _context.DCandidates.ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, ex.Message);
+            }
+            return new ActionResult<IEnumerable<DCandidate>>(result);
         }
 
         // GET: api/DCandidate/5
@@ -88,7 +97,7 @@ namespace WebAPI.Controllers
             }
             catch(Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "");
+                _logger.Log(LogLevel.Error, ex, ex.Message);
                 throw (ex as Exception);
             }
         }
