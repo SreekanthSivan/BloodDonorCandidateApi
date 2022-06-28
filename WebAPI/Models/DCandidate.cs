@@ -28,5 +28,11 @@ namespace WebAPI.Models
 
         [Column(TypeName = "nvarchar(100)")]
         public string address { get; set; }
+
+        [Column(TypeName = "nvarchar(200)")]
+        public string location { get; set; }
+
+        [Column(TypeName = "nvarchar(512)")]
+        public string imageUrl { get; set; }
     }
 }
