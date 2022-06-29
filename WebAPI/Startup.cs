@@ -6,11 +6,14 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using WebAPI.Models;
+using WebCandidateAPI.BusinessLogic;
+using WebCandidateAPI.Interfaces;
 
 namespace WebAPI
 {
@@ -27,6 +30,12 @@ namespace WebAPI
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
+            services.AddAzureClients(azureClientFactoryBuilder =>
+            {
+                azureClientFactoryBuilder.AddSecretClient(Configuration.GetSection("KeyVault"));
+            });
+            services.AddSingleton<IKeyVaultManager, KeyVaultManager>();
+
 
             services.AddDbContext<DonationDBContext>(options =>
             options.UseSqlServer(Configuration.GetConnectionString("ProdConnection")));

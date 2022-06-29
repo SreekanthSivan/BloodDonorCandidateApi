@@ -7,6 +7,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using WebCandidateAPI.Interfaces;
 
 namespace WebCandidateAPI.Controllers
 {
@@ -16,11 +17,20 @@ namespace WebCandidateAPI.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<FileController> _logger;
+        private readonly IKeyVaultManager _secretManager;
 
-        public FileController(IConfiguration configuration, ILogger<FileController> logger)
+        public FileController(IConfiguration configuration, ILogger<FileController> logger, IKeyVaultManager secretManager)
         {
             _configuration = configuration;
             _logger = logger;
+            _secretManager = secretManager;
+        }
+
+        [HttpGet]
+        public  void Get()
+        {
+            string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
+            string blobStorageConnectionString = GetVaultSecretKey(blobstorageconnection).Result.ToString();
         }
 
         [HttpPost("Upload")]
@@ -30,8 +40,9 @@ namespace WebCandidateAPI.Controllers
             {
                 string systemFileName = file.FileName;
                 string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
+                string blobStorageConnectionString = GetVaultSecretKey(blobstorageconnection).Result.ToString();
                 // Retrieve storage account from connection string.
-                CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobstorageconnection);
+                CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobStorageConnectionString);
                 // Create the blob client.
                 CloudBlobClient blobClient = cloudStorageAccount.CreateCloudBlobClient();
                 // Retrieve a reference to a container.
@@ -60,7 +71,8 @@ namespace WebCandidateAPI.Controllers
             await using (MemoryStream memoryStream = new MemoryStream())
             {
                 string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
-                CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobstorageconnection);
+                string blobStorageConnectionString =GetVaultSecretKey(blobstorageconnection).Result.ToString();
+                CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobStorageConnectionString);
                 CloudBlobClient cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
                 CloudBlobContainer cloudBlobContainer = cloudBlobClient.GetContainerReference(_configuration.GetValue<string>("BlobContainerName"));
                 blockBlob = cloudBlobContainer.GetBlockBlobReference(fileName);
@@ -74,13 +86,39 @@ namespace WebCandidateAPI.Controllers
         public async Task<IActionResult> DeleteFile(string fileName)
         {
             string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
-            CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobstorageconnection);
+            string blobStorageConnectionString = GetVaultSecretKey(blobstorageconnection).Result.ToString();
+            CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(blobStorageConnectionString);
             CloudBlobClient cloudBlobClient = cloudStorageAccount.CreateCloudBlobClient();
             string strContainerName = _configuration.GetValue<string>("BlobContainerName");
             CloudBlobContainer cloudBlobContainer = cloudBlobClient.GetContainerReference(strContainerName);
             var blob = cloudBlobContainer.GetBlobReference(fileName);
             await blob.DeleteIfExistsAsync();
             return Ok("File Deleted");
+        }
+
+
+        private async Task<string> GetVaultSecretKey(string secretName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(secretName))
+                {
+                    return BadRequest().ToString();
+                }
+                string secretValue = await _secretManager.GetSecret(secretName);
+                if (!string.IsNullOrEmpty(secretValue))
+                {
+                    return secretValue;
+                }
+                else
+                {
+                    return NotFound("Secret key not found.").ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Error: Unable to read secret").ToString();
+            }
         }
     }
 }
