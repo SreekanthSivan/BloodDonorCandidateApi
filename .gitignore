@@ -4,3 +4,5 @@
 
 /WebAPI/bin/Debug/netcoreapp3.0
 /WebAPI/obj
+*.suo
+/.vs/slnx.sqlite
