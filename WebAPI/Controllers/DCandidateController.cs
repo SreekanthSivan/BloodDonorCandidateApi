@@ -5,8 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 using WebAPI.Models;
+using WebCandidateAPI.Interfaces;
 
 namespace WebAPI.Controllers
 {
@@ -16,11 +20,16 @@ namespace WebAPI.Controllers
     {
         private readonly DonationDBContext _context;
         private readonly ILogger<DCandidateController> _logger;
+        private readonly IConfiguration _configuration;
+        private readonly IKeyVaultManager _secretManager;
 
-        public DCandidateController(DonationDBContext context, ILogger<DCandidateController> logger)
+        public DCandidateController(DonationDBContext context, ILogger<DCandidateController> logger, IConfiguration configuration, 
+            IKeyVaultManager secretManager)
         {
             _context = context;
             _logger = logger;
+            _configuration = configuration;
+            _secretManager = secretManager;
         }
 
         // GET: api/DCandidate
@@ -34,7 +43,7 @@ namespace WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, ex.Message);
+                _logger.Log(Microsoft.Extensions.Logging.LogLevel.Error, ex, ex.Message);
             }
             return new ActionResult<IEnumerable<DCandidate>>(result);
         }
@@ -69,7 +78,7 @@ namespace WebAPI.Controllers
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                _logger.Log(LogLevel.Error, ex, "");
+                _logger.Log(Microsoft.Extensions.Logging.LogLevel.Error, ex, "");
                 if (!DCandidateExists(id))
                 {
                     return NotFound();
@@ -93,11 +102,13 @@ namespace WebAPI.Controllers
             {
                 _context.DCandidates.Add(dCandidate);
                 await _context.SaveChangesAsync();
-                return CreatedAtAction("GetDCandidate", new { id = dCandidate.id }, dCandidate);
+                var a = CreatedAtAction("GetDCandidate", new { id = dCandidate.id }, dCandidate);
+                await pushDonorCreatedMessage(dCandidate.fullName, dCandidate.email);
+                return a;
             }
             catch(Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, ex.Message);
+                _logger.Log(Microsoft.Extensions.Logging.LogLevel.Error, ex, ex.Message);
                 throw (ex as Exception);
             }
         }
@@ -121,6 +132,52 @@ namespace WebAPI.Controllers
         private bool DCandidateExists(int id)
         {
             return _context.DCandidates.Any(e => e.id == id);
+        }
+
+        private async Task<bool> pushDonorCreatedMessage(string name, string email)
+        {
+            try
+            {
+                string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
+                //string blobStorageConnectionString = GetVaultSecretKey(blobstorageconnection).Result.ToString();
+                
+                string storageCnnStr = "DefaultEndpointsProtocol=https;AccountName=donorfilestorage;AccountKey=SehkQPguSawbcY7ZQxoEAq4zntzMnodYYxtzl3FYhA4Ho7hqBLCOYrjKlPuaGfqVI53njtnzIXNr+ASteGUhBA==;EndpointSuffix=core.windows.net";
+
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageCnnStr);
+                CloudQueueClient cloudQueueClient = storageAccount.CreateCloudQueueClient();
+                CloudQueue cloudQueue = cloudQueueClient.GetQueueReference("donormessagequeue");
+                string message = name + (!string.IsNullOrEmpty(email) ? "-" + email : "");
+                CloudQueueMessage queueMessage = new CloudQueueMessage(message);
+                await cloudQueue.AddMessageAsync(queueMessage);
+            }
+            catch (Exception ex)
+            {
+
+            }
+            return true;
+        }
+        private async Task<string> GetVaultSecretKey(string secretName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(secretName))
+                {
+                    return BadRequest().ToString();
+                }
+                string secretValue = await _secretManager.GetSecret(secretName);
+                if (!string.IsNullOrEmpty(secretValue))
+                {
+                    return secretValue;
+                }
+                else
+                {
+                    return NotFound("Secret key not found.").ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Error: Unable to read secret").ToString();
+            }
         }
     }
 }
