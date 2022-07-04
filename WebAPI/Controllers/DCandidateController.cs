@@ -104,6 +104,7 @@ namespace WebAPI.Controllers
                 await _context.SaveChangesAsync();
                 var a = CreatedAtAction("GetDCandidate", new { id = dCandidate.id }, dCandidate);
                 await pushDonorCreatedMessage(dCandidate.fullName, dCandidate.email);
+                await pushDonorCreatedMessage(Newtonsoft.Json.JsonConvert.SerializeObject(a));
                 return a;
             }
             catch(Exception ex)
@@ -134,19 +135,20 @@ namespace WebAPI.Controllers
             return _context.DCandidates.Any(e => e.id == id);
         }
 
-        private async Task<bool> pushDonorCreatedMessage(string name, string email)
+        private async Task<bool> pushDonorCreatedMessage(string message)
         {
             try
             {
                 string blobstorageconnection = _configuration.GetValue<string>("BlobConnectionString");
-                //string blobStorageConnectionString = GetVaultSecretKey(blobstorageconnection).Result.ToString();
-                
-                string storageCnnStr = "DefaultEndpointsProtocol=https;AccountName=donorfilestorage;AccountKey=SehkQPguSawbcY7ZQxoEAq4zntzMnodYYxtzl3FYhA4Ho7hqBLCOYrjKlPuaGfqVI53njtnzIXNr+ASteGUhBA==;EndpointSuffix=core.windows.net";
+                //string storageCnnStr = GetVaultSecretKey(blobstorageconnection).Result.ToString();
+                string storageCnnStr = await  _secretManager.GetSecret(blobstorageconnection);
+
+                //string storageCnnStr = "DefaultEndpointsProtocol=https;AccountName=donorfilestorage;AccountKey=SehkQPguSawbcY7ZQxoEAq4zntzMnodYYxtzl3FYhA4Ho7hqBLCOYrjKlPuaGfqVI53njtnzIXNr+ASteGUhBA==;EndpointSuffix=core.windows.net";
 
                 CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageCnnStr);
                 CloudQueueClient cloudQueueClient = storageAccount.CreateCloudQueueClient();
                 CloudQueue cloudQueue = cloudQueueClient.GetQueueReference("donormessagequeue");
-                string message = name + (!string.IsNullOrEmpty(email) ? "-" + email : "");
+               
                 CloudQueueMessage queueMessage = new CloudQueueMessage(message);
                 await cloudQueue.AddMessageAsync(queueMessage);
             }
@@ -155,6 +157,12 @@ namespace WebAPI.Controllers
 
             }
             return true;
+        }
+
+        private async Task<bool> pushDonorCreatedMessage(string name, string email)
+        {
+            string message = name + (!string.IsNullOrEmpty(email) ? "-" + email : "");
+            return await pushDonorCreatedMessage(message);
         }
         private async Task<string> GetVaultSecretKey(string secretName)
         {

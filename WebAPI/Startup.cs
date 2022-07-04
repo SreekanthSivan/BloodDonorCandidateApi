@@ -38,7 +38,7 @@ namespace WebAPI
 
 
             services.AddDbContext<DonationDBContext>(options =>
-            options.UseSqlServer(Configuration.GetConnectionString("DevConnection")));
+            options.UseSqlServer(Configuration.GetConnectionString("ProdConnection")));
 
 
             services.AddCors();
