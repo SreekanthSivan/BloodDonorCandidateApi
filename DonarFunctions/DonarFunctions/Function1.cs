@@ -8,10 +8,12 @@ namespace DonarFunctions
 {
     public class Function1
     {
-        [FunctionName("Function1")]
-        public void Run([BlobTrigger("samples-workitems/{name}", Connection = "DonarBlobStorageCS")]Stream myBlob, string name, ILogger log)
+        [FunctionName("QueueTrigger")]
+        public static void QueueTrigger(
+         [QueueTrigger("donaruserdata", Connection ="QueueStorageConString")] string myQueueItem,
+         ILogger log)
         {
-            log.LogInformation($"C# Blob trigger function Processed blob\n Name:{name} \n Size: {myBlob.Length} Bytes");
+            log.LogInformation($"C# function processed: {myQueueItem}");
         }
     }
 }
