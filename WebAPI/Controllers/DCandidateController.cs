@@ -103,7 +103,7 @@ namespace WebAPI.Controllers
                 _context.DCandidates.Add(dCandidate);
                 await _context.SaveChangesAsync();
                 var a = CreatedAtAction("GetDCandidate", new { id = dCandidate.id }, dCandidate);
-                await pushDonorCreatedMessage(dCandidate.fullName, dCandidate.email);
+                //await pushDonorCreatedMessage(dCandidate.fullName, dCandidate.email);
                 await pushDonorCreatedMessage(Newtonsoft.Json.JsonConvert.SerializeObject(a));
                 return a;
             }
