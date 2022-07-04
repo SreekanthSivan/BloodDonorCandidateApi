@@ -104,7 +104,7 @@ namespace WebAPI.Controllers
                 await _context.SaveChangesAsync();
                 var a = CreatedAtAction("GetDCandidate", new { id = dCandidate.id }, dCandidate);
                 //await pushDonorCreatedMessage(dCandidate.fullName, dCandidate.email);
-                await pushDonorCreatedMessage(Newtonsoft.Json.JsonConvert.SerializeObject(a));
+                await pushDonorCreatedMessage(Newtonsoft.Json.JsonConvert.SerializeObject(dCandidate));
                 return a;
             }
             catch(Exception ex)
