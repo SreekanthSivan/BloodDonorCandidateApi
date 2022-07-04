@@ -75,6 +75,7 @@ namespace WebAPI.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                await pushDonorCreatedMessage(Newtonsoft.Json.JsonConvert.SerializeObject(dCandidate));
             }
             catch (DbUpdateConcurrencyException ex)
             {
