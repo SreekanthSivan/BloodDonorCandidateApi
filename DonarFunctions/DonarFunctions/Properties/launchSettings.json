@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "DonarFunctions": {
-      "commandName": "Project",
-     
-      "launchBrowser": false
-    }
-  }
-}
